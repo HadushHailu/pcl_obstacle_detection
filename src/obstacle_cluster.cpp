@@ -8,6 +8,7 @@
 #include <laser_geometry/laser_geometry.h>
 #include <sensor_msgs/LaserScan.h>
 #include <visualization_msgs/Marker.h>
+#include <tf/transform_listener.h>
 
 #include <vector>
 
@@ -19,6 +20,7 @@ class ObstacleCluster{
 	ros::Publisher pub_scan_, pub_cloud_,pub_marker_;
 	ros::Subscriber sub_;
 	laser_geometry::LaserProjection projector_;
+        tf::TransformListener listener_;
         int cluster_size = 0;
     public:
 	ObstacleCluster(){
@@ -47,8 +49,18 @@ class ObstacleCluster{
 
 	void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan_in){
 		sensor_msgs::PointCloud2 sensor_cloud;
+
+                //change scan to map frame
+               if(!listener_.waitForTransform(
+        		scan_in->header.frame_id,
+        		"map",
+        		scan_in->header.stamp + ros::Duration().fromSec(scan_in->ranges.size()*scan_in->time_increment),
+       			 ros::Duration(1.0))){
+     			return;
+  		}
 		//change LaserScan msg to PointCloud
-		projector_.projectLaser(*scan_in, sensor_cloud);
+		//projector_.projectLaser(*scan_in, sensor_cloud);
+                projector_.transformLaserScanToPointCloud("map",*scan_in,sensor_cloud,listener_);
 		ROS_INFO("scan - sensor_msg %d datas", sensor_cloud.data.size());
 		pub_scan_.publish(sensor_cloud);
 
