@@ -9,6 +9,7 @@
 #include <sensor_msgs/LaserScan.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <tf/transform_listener.h>
+#include <pcl_obstacle_detection/ObjectPoint.h>
 
 #include <vector>
 #include <math.h>
@@ -18,7 +19,7 @@ class ObstacleCluster{
     private:
 	ros::NodeHandle nh_;
 	typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
-	ros::Publisher pub_scan_, pub_cloud_,pub_markerArray_,pub_ws_;
+	ros::Publisher pub_scan_, pub_cloud_,pub_markerArray_,pub_ws_, pub_objPoint_;
 	ros::Subscriber sub_;
 	laser_geometry::LaserProjection projector_;
         tf::TransformListener listener_;
@@ -29,6 +30,7 @@ class ObstacleCluster{
 		pub_scan_ = nh_.advertise<sensor_msgs::PointCloud2>("/cluster_scan",100);
                 pub_markerArray_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker", 10);
 		pub_ws_ = nh_.advertise<visualization_msgs::Marker>("work_space", 10);
+		pub_objPoint_ = nh_.advertise<pcl_obstacle_detection::ObjectPoint>("/cluster",100);
 		sub_ = nh_.subscribe("/scan", 100, &ObstacleCluster::scanCallback, this);
 	}
 
@@ -155,6 +157,15 @@ class ObstacleCluster{
 			marker.color.r = 0.9;
                 	marker.color.g = 0.3;
                 	marker.color.b = 0.3;
+		}
+
+		//if cluster is within the working space, publish it
+		if(std::fabs(cluster_x_mean) < 1.75 || std::fabs(cluster_y_mean) < 1.75){
+			pcl_obstacle_detection::ObjectPoint obj_point;
+			obj_point.center.x = cluster_x_mean;
+			obj_point.center.y = cluster_y_mean;
+			obj_point.radius =  cluster_radius;
+			pub_objPoint_.publish(obj_point);
 		}
 
 
